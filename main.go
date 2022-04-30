@@ -1,25 +1,14 @@
 package main
 
 import (
-	"crypto/tls"
-	lc "lc"
 	"log"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"time"
+
+	config "reverseProxy/config"
 )
 
-var (
-	hostTarget = map[string][]string{
-		"pi.192.168.1.136:8080": {"192.168.1.136/admin", "192.168.1.136/admin"},
-		"pi.sideme.xyz":         {"http://192.168.1.136/admin"},
-		"test.sideme.xyz":       {"http://localhost:3000/a", "http://localhost:3000/b", "http://localhost:3000/c"},
-		"pi.localhost:8080":     {"http://192.168.1.136/admin"},
-		"app.192.168.1.136":     {"192.168.1.136"},
-	}
-	hostProxy map[string]lc.HandleProxy = map[string]lc.HandleProxy{}
-)
+var hostProxy = config.Bootstrap()
 
 func main() {
 	httpsMux := http.NewServeMux()
@@ -48,7 +37,6 @@ func redirect(res http.ResponseWriter, req *http.Request) {
 
 func handler(res http.ResponseWriter, req *http.Request) {
 	host := req.Host
-
 	if target, ok := hostProxy[host]; ok {
 
 		proxy, done := target.NextProxy()
@@ -58,34 +46,6 @@ func handler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if target, ok := hostTarget[host]; ok {
-		proxies := make([]*httputil.ReverseProxy, len(hostTarget[host]))
-		for i := range hostTarget[host] {
-			remoteUrl, err := url.Parse(target[i])
-			if err != nil {
-				log.Println("Parse target failed:", err)
-				return
-			}
-			proxy := httputil.NewSingleHostReverseProxy(remoteUrl)
-			proxy.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			}
-			proxies[i] = proxy
-		}
-
-		nextServer, err := lc.LeastConnectionsProxy(proxies)
-		if err != nil {
-			log.Fatal("panic")
-		}
-
-		hostProxy[host] = nextServer
-
-		proxy, done := nextServer.NextProxy()
-
-		proxy.ServeHTTP(res, req)
-		defer done()
-		return
-	}
 	res.WriteHeader(http.StatusForbidden)
 	res.Write([]byte("403: Host forbidden " + host))
 }

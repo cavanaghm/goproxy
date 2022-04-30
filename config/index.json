@@ -1,0 +1,27 @@
+[
+	{
+		"name": "pihole-admin",
+		"listen": "pi.sideme.xyz",
+		"targets": ["192.168.1.136"]
+	},
+	{
+		"name": "test-balance",
+		"listen": "balance.sideme.xyz",
+		"balance": "leastConnections",
+		"targets": [
+			"http://localhost:3000/a",
+			"http://localhost:3000/b",
+			"http://localhost:3000/c"
+		]
+	},
+	{
+		"name": "round-robin",
+		"listen": "round.sideme.xyz",
+		"balance": "roundRobin",
+		"targets": [
+			"http://localhost:3000/a",
+			"http://localhost:3000/b",
+			"http://localhost:3000/c"
+		]
+	}
+]
